@@ -1,0 +1,804 @@
+  // Architectural Components
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
+
+    // Room
+    implementation "androidx.room:room-runtime:2.6.1"
+    kapt "androidx.room:room-compiler:2.6.1"
+
+    // Kotlin Extensions and Coroutines support for Room
+    implementation "androidx.room:room-ktx:2.6.1"
+
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1'
+
+    // Coroutine Lifecycle Scopes
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.7.0"
+
+    // Retrofit
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation "com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.11"
+
+    // Glide
+    implementation 'com.github.bumptech.glide:glide:4.14.2'
+    kapt 'com.github.bumptech.glide:compiler:4.14.2'
+
+//    implementation "io.coil-kt:coil:1.2.1"
+
+    implementation 'com.intuit.sdp:sdp-android:1.1.0'
+    implementation 'com.intuit.ssp:ssp-android:1.1.0'
+
+    implementation "com.airbnb.android:lottie:6.0.0"
+
+
+package com.hardik.goodgrip.api
+
+import com.hardik.goodgrip.models.AlbumResponse
+import com.hardik.goodgrip.models.CommentResponse
+import com.hardik.goodgrip.models.PhotoResponse
+import com.hardik.goodgrip.models.PostResponse
+import com.hardik.goodgrip.models.RandomImageUrlResponse
+import com.hardik.goodgrip.models.TodoResponse
+import com.hardik.goodgrip.models.UserResponse
+import retrofit2.Response
+import retrofit2.http.GET
+
+interface Apis {
+
+    @GET("/posts")
+    suspend fun getPosts() : Response<PostResponse>
+
+    @GET("/comments")
+    suspend fun getComments() : Response<CommentResponse>
+
+    @GET("/albums")
+    suspend fun getAlbums() : Response<AlbumResponse>
+
+    @GET("/photos")
+    suspend fun getPhotos() : Response<PhotoResponse>
+
+    @GET("/todos")
+    suspend fun getTodos() : Response<TodoResponse>
+
+    @GET("/users")
+    suspend fun getUsers() : Response<UserResponse>
+}
+
+
+package com.hardik.goodgrip.api
+
+
+import com.hardik.goodgrip.util.Constants.Companion.BASE_URL
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
+class RetrofitInstance {
+    companion object {
+        private val retrofit by lazy {
+            val logging = HttpLoggingInterceptor()
+            logging.setLevel(HttpLoggingInterceptor.Level.BASIC)//HEADERS,BODY,BASIC,NONE
+
+            val client = OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .build()
+
+            Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(client)
+                .build()
+        }
+        val api by lazy {
+            retrofit.create(Apis::class.java)
+        }
+    }
+}
+
+
+package com.hardik.goodgrip.repository
+
+import com.hardik.goodgrip.api.RetrofitInstance
+import com.hardik.goodgrip.db.RoomDatabaseInstance
+import com.hardik.goodgrip.models.AlbumResponseItem
+import com.hardik.goodgrip.models.CommentResponseItem
+import com.hardik.goodgrip.models.PhotoResponseItem
+import com.hardik.goodgrip.models.PostResponseItem
+import com.hardik.goodgrip.models.TodoResponseItem
+import com.hardik.goodgrip.models.UserResponseItem
+
+class RepositoryInstance (val db : RoomDatabaseInstance){
+    val TAG = RepositoryInstance::class.java.simpleName
+
+    // Post
+    suspend fun getPosts() = RetrofitInstance.api.getPosts()
+
+    suspend fun upsertPost(post: PostResponseItem) = db.getRoomDatabaseDao().upsertPost(post)
+    suspend fun upsertPost(posts: List<PostResponseItem>) = db.getRoomDatabaseDao().upsertPost(posts)
+    fun getAllPosts() = db.getRoomDatabaseDao().getAllPosts()
+    fun getAllPosts(userId: Int) = db.getRoomDatabaseDao().getAllPosts(userId = userId)
+    suspend fun deletePosts(post: PostResponseItem) = db.getRoomDatabaseDao().deletePost(post)
+
+    // Post with Comments
+    fun getPostWithComments(postId: Int) = db.getRoomDatabaseDao().getPostWithComments(postId)
+
+    // Comment
+    suspend fun getComments() = RetrofitInstance.api.getComments()
+
+    suspend fun upsertComment(comment: CommentResponseItem) = db.getRoomDatabaseDao().upsertComment(comment)
+    suspend fun upsertComment(comments: List<CommentResponseItem>) = db.getRoomDatabaseDao().upsertComment(comments)
+    fun getAllComments() = db.getRoomDatabaseDao().getAllComments()
+    fun getAllComments(postId: Int) = db.getRoomDatabaseDao().getAllComments(postId = postId)
+
+    suspend fun deleteComments(comment: CommentResponseItem) = db.getRoomDatabaseDao().deleteComment(comment)
+
+    // Album
+    suspend fun getAlbums() = RetrofitInstance.api.getAlbums()
+    suspend fun upsertAlbum(album: AlbumResponseItem) = db.getRoomDatabaseDao().upsertAlbum(album)
+    suspend fun upsertAlbum(albums: List<AlbumResponseItem>) = db.getRoomDatabaseDao().upsertAlbum(albums)
+    fun getAllAlbums() = db.getRoomDatabaseDao().getAllAlbums()
+    fun getAllAlbums(userId: Int) = db.getRoomDatabaseDao().getAllAlbums(userId = userId)
+    suspend fun deleteAlbum(album: AlbumResponseItem) = db.getRoomDatabaseDao().deleteAlbum(album)
+
+    // Album with Photos
+    fun getAlbumWithPhotos(albumId: Int) = db.getRoomDatabaseDao().getAlbumWithPhotos(albumId)
+
+    // Photo
+    suspend fun getPhotos() = RetrofitInstance.api.getPhotos()
+    suspend fun upsertPhoto(photo: PhotoResponseItem) = db.getRoomDatabaseDao().upsertPhoto(photo)
+    suspend fun upsertPhoto(photos: List<PhotoResponseItem>) = db.getRoomDatabaseDao().upsertPhoto(photos)
+    fun getAllPhotos() = db.getRoomDatabaseDao().getAllPhotos()
+    fun getAllPhotos(albumId: Int) = db.getRoomDatabaseDao().getAllPhotos(albumId = albumId)
+    suspend fun deletePhoto(photo: PhotoResponseItem) = db.getRoomDatabaseDao().deletePhoto(photo)
+
+    // Todo
+    suspend fun getTodos() = RetrofitInstance.api.getTodos()
+    suspend fun upsertTodo(todo: TodoResponseItem) = db.getRoomDatabaseDao().upsertTodo(todo)
+    suspend fun upsertTodo(todos: List<TodoResponseItem>) = db.getRoomDatabaseDao().upsertTodo(todos)
+    fun getAllTodos() = db.getRoomDatabaseDao().getAllTodos()
+    fun getAllTodos(userId: Int) = db.getRoomDatabaseDao().getAllTodos(userId = userId)
+    suspend fun deleteTodo(todo: TodoResponseItem) = db.getRoomDatabaseDao().deleteTodo(todo)
+//    fun isTodoCompleted(todoId: Int) = db.getRoomDatabaseDao().isTodoCompleted(todoId = todoId)
+    suspend fun updateTodoCompleted(todoId: Int, isCompleted: Boolean) = db.getRoomDatabaseDao().updateTodoCompleted(todoId = todoId, isCompleted = isCompleted)
+
+    // User
+    suspend fun getUsers() = RetrofitInstance.api.getUsers()
+    suspend fun upsertUser(user: UserResponseItem) = db.getRoomDatabaseDao().upsertUser(user)
+    suspend fun upsertUser(users: List<UserResponseItem>) = db.getRoomDatabaseDao().upsertUser(users)
+    fun getAllUsers() = db.getRoomDatabaseDao().getAllUsers()
+    suspend fun deleteUser(user: UserResponseItem) = db.getRoomDatabaseDao().deleteUser(user)
+
+    fun getUserWithDetails(postId: Int) = db.getRoomDatabaseDao().getUserWithDetails(postId)
+
+    fun getCommentDetails(commentId: Int) = db.getRoomDatabaseDao().getCommentDetails(commentId = commentId)
+
+    fun getTodoDetails(todoId: Int) = db.getRoomDatabaseDao().getTodoDetails(todoId = todoId)
+
+}
+
+
+package com.hardik.goodgrip.adapter
+
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.AsyncListDiffer
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.hardik.goodgrip.R
+import com.hardik.goodgrip.databinding.ItemAlbumPreviewBinding
+import com.hardik.goodgrip.databinding.ItemPhotoPreviewBinding
+import com.hardik.goodgrip.databinding.ItemPostPreviewBinding
+import com.hardik.goodgrip.models.AlbumResponseItem
+import com.hardik.goodgrip.models.PhotoResponseItem
+import com.hardik.goodgrip.models.PostResponseItem
+
+class PhotoAdapter: RecyclerView.Adapter<PhotoAdapter.PhotoViewHolder>() {
+    val TAG = PhotoAdapter::class.java.simpleName
+    inner class PhotoViewHolder(val binding: ItemPhotoPreviewBinding): RecyclerView.ViewHolder(binding.root)
+
+    private val differCallback = object : DiffUtil.ItemCallback<PhotoResponseItem>(){
+        override fun areItemsTheSame(
+            oldItem: PhotoResponseItem,
+            newItem: PhotoResponseItem
+        ): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(
+            oldItem: PhotoResponseItem,
+            newItem: PhotoResponseItem
+        ): Boolean {
+            return oldItem == newItem
+        }
+    }
+
+    val differ = AsyncListDiffer(this@PhotoAdapter, differCallback)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoViewHolder {
+        return PhotoViewHolder(
+            ItemPhotoPreviewBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        )
+    }
+
+    override fun getItemCount(): Int {
+        return differ.currentList.size
+    }
+
+    override fun onBindViewHolder(holder: PhotoViewHolder, position: Int) {
+        val photo = differ.currentList[position]
+        holder.itemView.alpha = 0f
+        holder.itemView.animate().alpha(1f).setDuration(200).start()
+        holder.itemView.apply {
+            holder.binding.tvTitle.apply {
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                marqueeRepeatLimit = -1
+                setHorizontallyScrolling(true)
+                isSingleLine = true
+                isSelected = true
+                text = photo.title
+            }
+            Glide
+                .with(this)
+                .load(photo.url)
+//                .load("https://ozgrozer.github.io/100k-faces/0/6/006722.jpg")
+//                .centerCrop()
+//                .apply(RequestOptions.circleCropTransform())
+//                .apply(RequestOptions().transform(RoundedCorners(20)))
+                .fitCenter()
+                .placeholder(ContextCompat.getDrawable(this.context, R.drawable.ic_launcher_foreground))
+                .error(R.drawable.ic_launcher_background)
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .into(holder.binding.ivUser)
+            Glide
+                .with(this)
+                .load(photo.thumbnailUrl)
+                .fitCenter()
+                .placeholder(ContextCompat.getDrawable(this.context, R.drawable.ic_launcher_foreground))
+                .error(R.drawable.ic_launcher_background)
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .into(holder.binding.ivThumbnail)
+            setOnClickListener {
+                onItemClickListener?.let {
+                    it(
+                        PhotoResponseItem(
+                            id = photo.id?: 1,
+                            albumId = photo.albumId?: 1,
+                            title = photo.title?: "",
+                            url = photo.url?: "",
+                            thumbnailUrl = photo.thumbnailUrl?: ""
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private var onItemClickListener: ((PhotoResponseItem) -> Unit)? = null
+
+    fun setOnItemClickListener(onItemClickListener: ((PhotoResponseItem) -> Unit)) {
+        this.onItemClickListener = onItemClickListener
+    }
+
+}
+
+
+package com.hardik.goodgrip.ui
+
+import android.annotation.SuppressLint
+import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.hardik.goodgrip.ApplicationInstance
+import com.hardik.goodgrip.models.AlbumResponse
+import com.hardik.goodgrip.models.AlbumResponseItem
+import com.hardik.goodgrip.models.CommentResponse
+import com.hardik.goodgrip.models.CommentResponseItem
+import com.hardik.goodgrip.models.PhotoResponse
+import com.hardik.goodgrip.models.PhotoResponseItem
+import com.hardik.goodgrip.models.PostResponse
+import com.hardik.goodgrip.models.PostResponseItem
+import com.hardik.goodgrip.models.TodoResponse
+import com.hardik.goodgrip.models.TodoResponseItem
+import com.hardik.goodgrip.models.UserResponse
+import com.hardik.goodgrip.models.UserResponseItem
+import com.hardik.goodgrip.repository.RepositoryInstance
+import com.hardik.goodgrip.util.Resource
+import kotlinx.coroutines.launch
+import retrofit2.Response
+import java.io.IOException
+
+class MainViewModel(app: Application, private val repositoryInstance: RepositoryInstance) : AndroidViewModel(app) {
+    val TAG = MainViewModel::class.java.simpleName
+
+    val posts : MutableLiveData<Resource<PostResponse>> = MutableLiveData()
+    var postResponse : PostResponse? = null
+
+    val comments : MutableLiveData<Resource<CommentResponse>> = MutableLiveData()
+    var commentResponse : CommentResponse? = null
+
+    val albums : MutableLiveData<Resource<AlbumResponse>> = MutableLiveData()
+    var albumResponse : AlbumResponse? = null
+
+    val photos : MutableLiveData<Resource<PhotoResponse>> = MutableLiveData()
+    var photoResponse : PhotoResponse? = null
+
+    val todos : MutableLiveData<Resource<TodoResponse>> = MutableLiveData()
+    var todoResponse : TodoResponse? = null
+
+    val users: MutableLiveData<Resource<UserResponse>> = MutableLiveData()
+    var userResponse : UserResponse? = null
+
+
+    init {
+//        getPosts()
+//        getComments()
+//        getAlbums()
+//        getPhotos()
+//        getTodos()
+//        getUsers()
+    }
+
+    // Post API methods
+    fun getPosts() = viewModelScope.launch {
+        Log.d(TAG, "getPosts: viewModelScope")
+        safePostCall()
+    }
+    private suspend fun safePostCall() {
+        posts.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getPosts()
+                posts.postValue(handlePostResponse(response))
+            }else{
+                posts.postValue(Resource.Error("No internet Connection"))
+            }
+
+        }catch (t : Throwable){
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+        }
+    }
+    private fun handlePostResponse(response: Response<PostResponse>): Resource<PostResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handlePostResponse: ")
+                if (postResponse == null){
+                    postResponse = resultResponse
+                }else{
+                    val oldData = postResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = postResponse ?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // Post DB request
+    fun savePost(response: PostResponseItem) = viewModelScope.launch { repositoryInstance.upsertPost(response) }
+    fun savePost(response: List<PostResponseItem>) = viewModelScope.launch { repositoryInstance.upsertPost(response) }
+    fun getSavedPosts() = repositoryInstance.getAllPosts()
+    fun getSavedPosts(userId: Int) = repositoryInstance.getAllPosts(userId = userId)
+    fun deletePost(postResponseItem: PostResponseItem) = viewModelScope.launch {
+        repositoryInstance.deletePosts(postResponseItem)
+    }
+
+
+    // Comment API methods
+    fun getComments() = viewModelScope.launch {
+        Log.d(TAG, "getComments: viewModelScope")
+        safeCommentCall()
+    }
+    private suspend fun safeCommentCall() {
+        comments.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getComments()
+                comments.postValue(handleCommentsResponse(response))
+            }else{
+                comments.postValue(Resource.Error("NoInternetConnection"))
+            }
+
+        }catch (t : Throwable) {
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+            Log.d(TAG, "safeCommentCall: ${t.localizedMessage}")
+            comments.postValue(Resource.Error(t.localizedMessage))
+        }
+    }
+    private fun handleCommentsResponse(response: Response<CommentResponse>): Resource<CommentResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handleCommentsResponse: ")
+                if (commentResponse == null){
+                    commentResponse = resultResponse
+                }else{
+                    val oldData = commentResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = commentResponse?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // Comment DB request
+    fun saveComment(response: CommentResponseItem) = viewModelScope.launch { repositoryInstance.upsertComment(response) }
+    fun saveComment(response: List<CommentResponseItem>) = viewModelScope.launch { repositoryInstance.upsertComment(response) }
+    fun getSavedComments() = repositoryInstance.getAllComments()
+    fun getSavedComments(postId: Int) = repositoryInstance.getAllComments(postId = postId)
+    fun deleteComments(commentResponseItem: CommentResponseItem) = viewModelScope.launch {
+        Log.d(TAG, "deleteComments: viewModelScope")
+        repositoryInstance.deleteComments(commentResponseItem)
+    }
+
+    // Post With Comment DB request
+    fun getSavedPostWithComments(post_id:Int=1) = repositoryInstance.getPostWithComments(post_id)
+
+    // Album API request
+    fun getAlbums() = viewModelScope.launch {
+        Log.d(TAG, "getAlbums: viewModelScope")
+        safeAlbumCall()
+    }
+    private suspend fun safeAlbumCall() {
+        albums.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getAlbums()
+                albums.postValue(handleAlbumResponse(response))
+            }else{
+                albums.postValue(Resource.Error("NoInternetConnection"))
+            }
+
+        }catch (t : Throwable) {
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+            Log.d(TAG, "safeAlbumCall: ${t.localizedMessage}")
+            albums.postValue(Resource.Error(t.localizedMessage))
+        }
+    }
+    private fun handleAlbumResponse(response: Response<AlbumResponse>): Resource<AlbumResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handleAlbumResponse: ")
+                if (albumResponse == null){
+                    albumResponse = resultResponse
+                }else{
+                    val oldData = albumResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = albumResponse?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // Album DB request
+    fun saveAlbum(response: AlbumResponseItem) = viewModelScope.launch { repositoryInstance.upsertAlbum(response) }
+    fun saveAlbum(response: List<AlbumResponseItem>) = viewModelScope.launch { repositoryInstance.upsertAlbum(response) }
+    fun getSavedAlbums() = repositoryInstance.getAllAlbums()
+    fun getSavedAlbums(userId: Int) = repositoryInstance.getAllAlbums(userId = userId)
+    fun deleteAlbum(response: AlbumResponseItem) = viewModelScope.launch {
+        Log.d(TAG, "deleteAlbum: viewModelScope")
+        repositoryInstance.deleteAlbum(response)
+    }
+
+    // Photo API request
+    fun getPhotos() = viewModelScope.launch {
+        Log.d(TAG, "getPhotos: viewModelScope")
+        safePhotoCall()
+    }
+    private suspend fun safePhotoCall() {
+        photos.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getPhotos()
+                photos.postValue(handlePhotoResponse(response))
+            }else{
+                photos.postValue(Resource.Error("NoInternetConnection"))
+            }
+
+        }catch (t : Throwable) {
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+            Log.d(TAG, "safePhotoCall: ${t.localizedMessage}")
+            photos.postValue(Resource.Error(t.localizedMessage))
+        }
+    }
+    private fun handlePhotoResponse(response: Response<PhotoResponse>): Resource<PhotoResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handlePhotoResponse: ")
+                if (photoResponse == null){
+                    photoResponse = resultResponse
+                }else{
+                    val oldData = photoResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = photoResponse?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // Photo DB request
+    fun savePhoto(response: PhotoResponseItem) = viewModelScope.launch { repositoryInstance.upsertPhoto(response) }
+    fun savePhoto(response: List<PhotoResponseItem>) = viewModelScope.launch { repositoryInstance.upsertPhoto(response) }
+    fun getSavedPhotos() = repositoryInstance.getAllPhotos()
+    fun getSavedPhotos(albumId: Int) = repositoryInstance.getAllPhotos(albumId = albumId)
+    fun deletePhoto(response: PhotoResponseItem) = viewModelScope.launch {
+        Log.d(TAG, "deletePhoto: viewModelScope")
+        repositoryInstance.deletePhoto(response)
+    }
+
+    // Todo API request
+    fun getTodos() = viewModelScope.launch {
+        Log.d(TAG, "getTodos: viewModelScope")
+        safeTodoCall()
+    }
+    private suspend fun safeTodoCall() {
+        todos.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getTodos()
+                todos.postValue(handleTodoResponse(response))
+            }else{
+                todos.postValue(Resource.Error("NoInternetConnection"))
+            }
+
+        }catch (t : Throwable) {
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+            Log.d(TAG, "safeTodoCall: ${t.localizedMessage}")
+            todos.postValue(Resource.Error(t.localizedMessage))
+        }
+    }
+    private fun handleTodoResponse(response: Response<TodoResponse>): Resource<TodoResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handleTodoResponse: ")
+                if (todoResponse == null){
+                    todoResponse = resultResponse
+                }else{
+                    val oldData = todoResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = todoResponse?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // Todo DB request
+    fun saveTodo(response: TodoResponseItem) = viewModelScope.launch { repositoryInstance.upsertTodo(response) }
+    fun saveTodo(response: List<TodoResponseItem>) = viewModelScope.launch { repositoryInstance.upsertTodo(response) }
+    fun getSavedTodos() = repositoryInstance.getAllTodos()
+    fun getSavedTodos(userId: Int) = repositoryInstance.getAllTodos(userId = userId)
+    fun deleteTodo(response: TodoResponseItem) = viewModelScope.launch {
+        Log.d(TAG, "deleteTodo: viewModelScope")
+        repositoryInstance.deleteTodo(response)
+    }
+//    fun isTodoCompleted(todoId: Int) = repositoryInstance.isTodoCompleted(todoId)
+    fun updateTodoCompleted(todoId: Int, isCompleted: Boolean) = viewModelScope.launch {
+        repositoryInstance.updateTodoCompleted(todoId, isCompleted)
+    }
+
+    // User API request
+    fun getUsers() = viewModelScope.launch {
+        Log.d(TAG, "getUsers: viewModelScope")
+        safeUserCall()
+    }
+    private suspend fun safeUserCall() {
+        users.postValue(Resource.Loading())
+        try {
+            if (hasInternetConnection()){
+                val response = repositoryInstance.getUsers()
+                users.postValue(handleUserResponse(response))
+            }else{
+                users.postValue(Resource.Error("NoInternetConnection"))
+            }
+
+        }catch (t : Throwable) {
+            when(t){
+                is IOException -> posts.postValue(Resource.Error("Network failure!!!"))
+                else -> posts.postValue(Resource.Error("Conversion error!!!"))
+            }
+            Log.d(TAG, "safeUserCall: ${t.localizedMessage}")
+            users.postValue(Resource.Error(t.localizedMessage))
+        }
+    }
+    private fun handleUserResponse(response: Response<UserResponse>): Resource<UserResponse> {
+        if (response.isSuccessful){
+            response.body()?.let { resultResponse ->
+                Log.d(TAG, "handleUserResponse: ")
+                if (userResponse == null){
+                    userResponse = resultResponse
+                }else{
+                    val oldData = userResponse
+                    val newData = resultResponse
+                    oldData?.addAll(newData)
+                }
+                return Resource.Success(data = userResponse?: resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+    }
+    // User DB request
+    fun saveUser(response: UserResponseItem) = viewModelScope.launch { repositoryInstance.upsertUser(response) }
+    fun saveUser(response: List<UserResponseItem>) = viewModelScope.launch { repositoryInstance.upsertUser(response) }
+    fun getSavedUsers() = repositoryInstance.getAllUsers()
+    fun deleteUser(response: UserResponseItem) = viewModelScope.launch {
+        Log.d(TAG, "deleteUser: viewModelScope")
+        repositoryInstance.deleteUser(response)
+    }
+
+    fun getCommentDetails(commentId: Int) = repositoryInstance.getCommentDetails(commentId = commentId)
+
+    fun getTodoDetails(todoId: Int) = repositoryInstance.getTodoDetails(todoId = todoId)
+
+    // Check internet connection
+    @SuppressLint("ObsoleteSdkInt")
+    private fun hasInternetConnection(): Boolean {
+        val connectivityManager = getApplication<ApplicationInstance>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+            val activeNetwork = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+            return when{
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+                else -> false
+            }
+        }else{
+            connectivityManager.activeNetworkInfo?.run {
+                return when (type) {
+                    ConnectivityManager.TYPE_WIFI -> true
+                    ConnectivityManager.TYPE_MOBILE -> true
+                    ConnectivityManager.TYPE_ETHERNET -> true
+                    else -> false
+                }
+            }
+        }
+        return false
+    }
+}
+
+
+
+package com.hardik.goodgrip.ui
+
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.hardik.goodgrip.repository.RepositoryInstance
+
+class MainViewModelProviderFactory(private val app: Application, private val repositoryInstance: RepositoryInstance) : ViewModelProvider.Factory{
+    val TAG = MainViewModelProviderFactory::class.java.simpleName
+
+    override fun <T : ViewModel> create(modelClass : Class<T>) : T {
+        Log.d(TAG, "create: ")
+        return MainViewModel(app, repositoryInstance) as T
+    }
+}
+
+
+package com.hardik.goodgrip.util
+
+class Constants {
+
+    companion object{
+        const val BASE_URL = "https://jsonplaceholder.typicode.com"
+        const val PARAM_USER = "USER"
+        const val PARAM_USER_ID = "USER_ID"
+        const val PARAM_ALBUM_ID = "ALBUM_ID"
+        const val PARAM_POST_ID = "POST_ID"
+    }
+}
+
+package com.hardik.goodgrip.util
+
+sealed class Resource<T>(
+    val data: T? = null,
+    val message: String? = null
+) {
+    class Success<T>(data: T) : Resource<T>(data)
+    class Error<T>(message: String,data: T? = null,) : Resource<T>(data, message)
+    class Loading<T> : Resource<T>()
+}
+
+
+package com.hardik.goodgrip
+
+import android.app.Application
+
+class ApplicationInstance : Application() {
+}
+
+
+  <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+        android:usesCleartextTraffic="true"
+        android:enableOnBackInvokedCallback="true"
+
+
+        https://fakestoreapi.com/products
+
+
+Retrofit retrofit = new Retrofit.Builder()
+     .baseUrl("https://api.example.com/")
+     .addConverterFactory(GsonConverterFactory.create())
+     .build();
+
+ MyApi api = retrofit.create(MyApi.class);
+ Response<User> user = api.getUser().execute();
+
+
+
+ Retrofit.Builder()
+         .baseUrl(baseURL)
+         .addConverterFactory(ScalarsConverterFactory.create())
+         .addConverterFactory(SimpleXmlConverterFactory.create())
+         .client(OkHttpClient().newBuilder().addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
+                 .connectTimeout(10000L, TimeUnit.MILLISECONDS)
+                 .readTimeout(10000L, TimeUnit.MILLISECONDS)
+                 .writeTimeout(10000L, TimeUnit.MILLISECONDS).build())
+         .build()
+
+
+ val searchIcon = binding.searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_mag_icon)
+        // Set icon color programmatically
+        searchIcon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.white), PorterDuff.Mode.SRC_IN)
+        // Set text size programmatically
+        val searchAutoComplete = binding.searchView.findViewById<AutoCompleteTextView>(androidx.appcompat.R.id.search_src_text)
+        searchAutoComplete.textSize = resources.getDimension(com.intuit.ssp.R.dimen._6ssp) // Set your desired text size
+        // Set text color programmatically
+        searchAutoComplete.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener{
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                // if query is done then enter the search
+//                if (query!= null){
+//                    spellingAdapter.filter.filter(query)
+//                }else{
+//                    spellingAdapter.filter.filter("")
+//                }
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+               // if query is add char then the search
+                spellingAdapter.filter.filter(newText)
+//                if (newText.isNullOrBlank()) {
+//                    // Show the search icon when the query is empty
+//                    searchIcon.visibility = View.VISIBLE
+//                } else {
+//                    // Hide the search icon when there is text in the query
+//                    searchIcon.visibility = View.GONE
+//                }
+                return true
+            }
+
+        })
